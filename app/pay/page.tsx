@@ -31,17 +31,36 @@ export default function PayPage() {
     setMessage("");
     let phone = phoneNumber.replace(/\D/g, "");
     if (phone.startsWith("0")) phone = "254" + phone.slice(1);
-    const res = await fetch("/api/parking/pay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.sessionId, phoneNumber: phone, amount: session.amountDue }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      setMessage("📱 STK Push sent! Enter M-Pesa PIN.");
-      setSession((prev: any) => ({ ...prev, status: "PAID" }));
-    } else setMessage(data.error || "Payment failed");
+    try {
+      const res = await fetch("/api/parking/pay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: session.sessionId, phoneNumber: phone, amount: session.amountDue }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoading(false);
+        setMessage(data.error || "Payment failed");
+        return;
+      }
+      setMessage("Check your phone and enter M-Pesa PIN...");
+      const interval = setInterval(async () => {
+        const sRes = await fetch(`/api/parking/session/${session.sessionId}`);
+        const sData = await sRes.json();
+        if (sData.status === "PAID") {
+          clearInterval(interval);
+          setLoading(false);
+          setSession((prev: any) => ({ ...prev, status: "PAID" }));
+        }
+      }, 3000);
+      setTimeout(() => {
+        clearInterval(interval);
+        setLoading(false);
+      }, 60000);
+    } catch {
+      setLoading(false);
+      setMessage("Network error. Please try again.");
+    }
   };
 
   if (!session) {

@@ -23,6 +23,20 @@ const migrationSql = `
 -- Enable UUID extension if not enabled
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- 1. Parking sessions table
+CREATE TABLE IF NOT EXISTS public.parking_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plate_number VARCHAR(20) NOT NULL,
+  entry_time TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  amount_due NUMERIC(10, 2) DEFAULT 0.00,
+  payhero_ref VARCHAR(100) DEFAULT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_parking_sessions_active
+ON public.parking_sessions(plate_number, status);
+
 -- 1. Companies table
 CREATE TABLE IF NOT EXISTS public.companies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

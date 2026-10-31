@@ -90,6 +90,10 @@ export default function PayPage() {
             <span className="font-bold text-slate-900">{session.durationMinutes} mins</span>
           </div>
           <div className="flex justify-between">
+            <span>Base Charge:</span>
+            <span className="font-bold text-slate-900">KES {session.baseAmount}</span>
+          </div>
+          <div className="flex justify-between">
             <span>Service Fee:</span>
             <span className="font-bold text-slate-900">KES {session.serviceFee}</span>
           </div>
@@ -100,8 +104,11 @@ export default function PayPage() {
         </div>
         {session.status === "PAID" ? (
           <div className="bg-green-100 border border-green-400 text-green-800 p-4 rounded-2xl font-bold space-y-2 text-center">
-            <p>✅ Payment Confirmed. You have 15 minutes to exit.</p>
-            <button onClick={() => window.print()} className="bg-white text-green-800 px-4 py-2 rounded-xl font-semibold">
+            <p>✅ Payment Confirmed</p>
+            <p className="text-sm font-normal">Amount Paid: KES {session.amountDue}</p>
+            <p className="text-sm font-normal">Time Parked: {session.durationMinutes} mins</p>
+            <p className="text-sm font-normal">Exit by: {new Date(Date.now() + 15 * 60 * 1000).toLocaleTimeString()}</p>
+            <button onClick={() => window.print()} className="bg-white text-green-800 px-4 py-2 rounded-xl font-semibold mt-2">
               Print Receipt
             </button>
           </div>

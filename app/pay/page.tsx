@@ -43,7 +43,7 @@ export default function PayPage() {
         setMessage(data.error || "Payment failed");
         return;
       }
-      setMessage("Check your phone and enter M-Pesa PIN...");
+      setMessage("📱 STK Push sent! Enter M-Pesa PIN on your phone.");
       const interval = setInterval(async () => {
         const sRes = await fetch(`/api/parking/session/${session.sessionId}`);
         const sData = await sRes.json();
@@ -53,13 +53,28 @@ export default function PayPage() {
           setSession((prev: any) => ({ ...prev, status: "PAID" }));
         }
       }, 3000);
-      setTimeout(() => {
-        clearInterval(interval);
-        setLoading(false);
-      }, 60000);
+      setTimeout(() => { clearInterval(interval); setLoading(false); }, 60000);
     } catch {
       setLoading(false);
       setMessage("Network error. Please try again.");
+    }
+  };
+
+  const handleManualVerify = async () => {
+    setLoading(true);
+    setMessage("Verifying payment status...");
+    const res = await fetch("/api/parking/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: session.sessionId }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (res.ok && data.status === "PAID") {
+      setSession((prev: any) => ({ ...prev, status: "PAID" }));
+      setMessage("✅ Payment confirmed!");
+    } else {
+      setMessage("Payment not detected yet. Ensure you entered M-Pesa PIN.");
     }
   };
 
@@ -153,6 +168,20 @@ export default function PayPage() {
               ) : (
                 `PAY KES ${session.amountDue} VIA M-PESA`
               )}
+            </button>
+            {loading && (
+              <button
+                onClick={handleManualVerify}
+                className="w-full bg-blue-50 border border-blue-300 text-blue-700 font-semibold py-2.5 rounded-xl text-sm hover:bg-blue-100 transition-all"
+              >
+                Already Paid? Click to Confirm
+              </button>
+            )}
+            <button
+              onClick={() => { setLoading(false); setMessage(""); }}
+              className="w-full bg-gray-100 text-gray-600 font-semibold py-2 rounded-xl text-sm"
+            >
+              Cancel / Change Number
             </button>
             {message && <p className="text-xs font-semibold text-blue-600 text-center">{message}</p>}
           </div>

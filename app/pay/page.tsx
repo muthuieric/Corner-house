@@ -13,16 +13,16 @@ export default function PayPage() {
   const lookup = async () => {
     setLookingUp(true);
     setMessage("");
-    await fetch("/api/parking/anpr-entry", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plateNumber: plate }),
-    });
-    const res = await fetch(`/api/parking/session-by-plate?plate=${encodeURIComponent(plate)}`);
-    const data = await res.json();
-    setLookingUp(false);
-    if (res.ok) setSession(data);
-    else setMessage(data.error || "No active session");
+    try {
+      const res = await fetch(`/api/parking/session-by-plate?plate=${encodeURIComponent(plate)}`);
+      const data = await res.json();
+      setLookingUp(false);
+      if (res.ok) setSession(data);
+      else setMessage(data.error || "No active session");
+    } catch {
+      setLookingUp(false);
+      setMessage("Error looking up vehicle session.");
+    }
   };
 
   const handlePay = async () => {
@@ -63,18 +63,27 @@ export default function PayPage() {
   const handleManualVerify = async () => {
     setLoading(true);
     setMessage("Verifying payment status...");
-    const res = await fetch("/api/parking/confirm", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.sessionId }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok && data.status === "PAID") {
-      setSession((prev: any) => ({ ...prev, status: "PAID" }));
-      setMessage("✅ Payment confirmed!");
-    } else {
-      setMessage("Payment not detected yet. Ensure you entered M-Pesa PIN.");
+    try {
+      const res = await fetch("/api/parking/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: session.sessionId }),
+      });
+      const data = await res.json();
+      setLoading(false);
+      if (res.ok && data.success && data.status === "PAID") {
+        setSession((prev: any) => ({
+          ...prev,
+          status: "PAID",
+          amountPaid: data.amountPaid || prev.amountDue,
+        }));
+        setMessage("✅ Payment confirmed!");
+      } else {
+        setMessage(data.message || "Payment not detected yet. Ensure you entered M-Pesa PIN.");
+      }
+    } catch {
+      setLoading(false);
+      setMessage("Error verifying payment. Please try again.");
     }
   };
 
@@ -139,7 +148,12 @@ export default function PayPage() {
         {session.status === "PAID" ? (
           <div className="bg-green-100 border border-green-400 text-green-800 p-4 rounded-2xl font-bold space-y-2 text-center">
             <p>✅ Payment Confirmed</p>
-            <p className="text-sm font-normal">Amount Paid: KES {session.amountDue}</p>
+            {session.mpesaReceipt && (
+              <p className="text-xs font-mono text-green-900 bg-green-200/60 py-1 px-2 rounded-lg inline-block">
+                M-Pesa Ref: {session.mpesaReceipt}
+              </p>
+            )}
+            <p className="text-sm font-normal">Amount Paid: KES {session.amountPaid || session.amountDue}</p>
             <p className="text-sm font-normal">Time Parked: {session.durationMinutes} mins</p>
             <p className="text-sm font-normal">Exit by: {new Date(Date.now() + 15 * 60 * 1000).toLocaleTimeString()}</p>
             <button onClick={() => window.print()} className="bg-white text-green-800 px-4 py-2 rounded-xl font-semibold mt-2">

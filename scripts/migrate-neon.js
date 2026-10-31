@@ -155,8 +155,29 @@ CREATE TABLE IF NOT EXISTS public.billing_usage (
   CONSTRAINT billing_usage_company_month_unique UNIQUE (company_id, billing_month)
 );
 
-CREATE INDEX IF NOT EXISTS idx_billing_usage_company_month
-  ON public.billing_usage(company_id, billing_month);
+-- 7. Parking Sessions table
+CREATE TABLE IF NOT EXISTS public.parking_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plate_number VARCHAR NOT NULL,
+  entry_time TIMESTAMPTZ DEFAULT now(),
+  status VARCHAR DEFAULT 'PENDING',
+  amount_due NUMERIC DEFAULT 0,
+  amount_paid NUMERIC DEFAULT 0,
+  paid_at TIMESTAMPTZ,
+  mpesa_receipt_number VARCHAR,
+  phone_number VARCHAR,
+  payhero_ref VARCHAR,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_parking_sessions_plate
+  ON public.parking_sessions(plate_number);
+
+CREATE INDEX IF NOT EXISTS idx_parking_sessions_status
+  ON public.parking_sessions(status);
+
+CREATE INDEX IF NOT EXISTS idx_parking_sessions_ref
+  ON public.parking_sessions(payhero_ref);
 `;
 
 async function run() {

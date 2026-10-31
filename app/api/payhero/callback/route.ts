@@ -5,6 +5,7 @@ import { createSupabaseAdmin, markCompanyPaymentSuccessful, reconcileCompanyBill
 import { getPayHeroExternalReference, getPayHeroReference, normalizePayHeroProviderStatus } from "@/lib/payhero";
 import { getSafeErrorResponse } from "@/lib/api-auth";
 import { safeNumber } from "@/lib/validation";
+import { executeQuery } from "@/lib/pg-client";
 
 function getPayloadValue(payload: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
@@ -32,6 +33,100 @@ export async function POST(req: Request) {
 
     if (!providerReference && !externalReference) {
       return NextResponse.json({ error: "Missing PayHero transaction reference." }, { status: 400 });
+    }
+
+    // 1. Check if this is a parking session payment (starts with PARK- or matches parking_sessions payhero_ref)
+    const isParkingRef = externalReference.startsWith("PARK-");
+    let parkingSessionId: string | null = null;
+    if (isParkingRef) {
+      const match = externalReference.match(/^PARK-([0-9a-f-]{36})/i);
+      parkingSessionId = match?.[1] || null;
+    }
+
+    let parkingSession: any = null;
+    if (parkingSessionId) {
+      const pRes = await executeQuery(
+        `SELECT * FROM public.parking_sessions WHERE id = $1 LIMIT 1`,
+        [parkingSessionId]
+      );
+      if (pRes.rows.length > 0) parkingSession = pRes.rows[0];
+    }
+    if (!parkingSession && providerReference) {
+      const pRes = await executeQuery(
+        `SELECT * FROM public.parking_sessions WHERE payhero_ref = $1 LIMIT 1`,
+        [providerReference]
+      );
+      if (pRes.rows.length > 0) parkingSession = pRes.rows[0];
+    }
+
+    if (parkingSession) {
+      const providerAmount = safeNumber(
+        getPayloadValue(payload, ["Amount", "amount"]),
+        Number(parkingSession.amount_due || 0)
+      );
+      const receiptNumber = String(
+        getPayloadValue(payload, ["MpesaReceiptNumber", "TransactionReceipt", "mpesa_receipt_number"]) || ""
+      );
+      const phoneNumber = String(
+        getPayloadValue(payload, ["Phone", "phone", "phone_number", "PhoneNumber"]) || parkingSession.phone_number || ""
+      );
+
+      if (status === "paid") {
+        // Update parking_sessions table in Neon
+        await executeQuery(
+          `UPDATE public.parking_sessions 
+           SET status = 'PAID', 
+               amount_paid = $1, 
+               paid_at = now(), 
+               mpesa_receipt_number = $2, 
+               phone_number = $3 
+           WHERE id = $4`,
+          [providerAmount, receiptNumber, phoneNumber, parkingSession.id]
+        );
+
+        // Update or insert transaction in Neon
+        await executeQuery(
+          `UPDATE public.transactions 
+           SET status = 'paid', 
+               amount = $1,
+               paid_at = now(), 
+               mpesa_receipt_number = $2, 
+               phone_number = $3,
+               raw_callback_payload = $4,
+               updated_at = now()
+           WHERE provider_reference = $5 OR checkout_request_id = $5 OR external_reference = $6`,
+          [
+            providerAmount,
+            receiptNumber,
+            phoneNumber,
+            JSON.stringify(body),
+            providerReference,
+            externalReference,
+          ]
+        );
+
+        return NextResponse.json({ success: true, status: "paid", sessionId: parkingSession.id });
+      } else if (status === "failed" || status === "cancelled") {
+        await executeQuery(
+          `UPDATE public.parking_sessions 
+           SET status = 'FAILED' 
+           WHERE id = $1`,
+          [parkingSession.id]
+        );
+
+        await executeQuery(
+          `UPDATE public.transactions 
+           SET status = $1, 
+               raw_callback_payload = $2,
+               updated_at = now()
+           WHERE provider_reference = $3 OR checkout_request_id = $3 OR external_reference = $4`,
+          [status, JSON.stringify(body), providerReference, externalReference]
+        );
+
+        return NextResponse.json({ success: true, status, sessionId: parkingSession.id });
+      }
+
+      return NextResponse.json({ success: true, status });
     }
 
     const supabaseAdmin = createSupabaseAdmin();

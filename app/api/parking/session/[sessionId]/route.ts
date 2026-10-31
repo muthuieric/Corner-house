@@ -45,6 +45,9 @@ export async function GET(
       extraAmount: 0,
       serviceFee: SERVICE_FEE,
       amountDue,
+      amountPaid: Number(session.amount_paid || 0),
+      paidAt: session.paid_at || null,
+      mpesaReceipt: session.mpesa_receipt_number || null,
       status: session.status,
     });
   } catch (error) {

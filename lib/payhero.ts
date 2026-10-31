@@ -1,5 +1,12 @@
 // lib/payhero.ts
 
+import dns from "node:dns";
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch {
+  // browser or non-node environment
+}
+
 export type PayHeroInitiatePaymentInput = {
   amount: number;
   phoneNumber: string;
@@ -165,6 +172,73 @@ export async function initiatePayHeroPayment(input: PayHeroInitiatePaymentInput)
   });
 
   return parsePayHeroResponse(response, endpointUrl, payload);
+}
+
+export async function getPayHeroRecentTransactions(): Promise<Array<Record<string, unknown>>> {
+  const url = `${PAYHERO_BASE_URL}/transactions`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: getPayHeroAuthHeader(),
+      "Content-Type": "application/json",
+    },
+  });
+  const data = await readPayHeroResponseBody(response);
+  if (data && typeof data === "object" && "transactions" in data && Array.isArray((data as any).transactions)) {
+    return (data as any).transactions as Array<Record<string, unknown>>;
+  }
+  return [];
+}
+
+export async function verifyParkingPaymentFromPayHero(sessionId: string, phone?: string) {
+  try {
+    const txs = await getPayHeroRecentTransactions();
+    // 1. Look for matching external_reference containing sessionId
+    const match = txs.find((tx) => {
+      const ext = String(tx.external_reference || "");
+      const isType = String(tx.transaction_type || "").toLowerCase() === "inbound_payment";
+      return isType && ext.includes(sessionId);
+    });
+
+    if (match) {
+      return {
+        paid: true,
+        amount: Number(match.amount || 0),
+        receipt: String(match.provider_reference || ""),
+        externalReference: String(match.external_reference || ""),
+        phone: String(match.beneficiary || match.phone_number || ""),
+        createdAt: String(match.created_at || ""),
+        raw: match,
+      };
+    }
+
+    // 2. Also check if phone matches and created in the last 30 minutes
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, "");
+      const phoneMatch = txs.find((tx) => {
+        const isType = String(tx.transaction_type || "").toLowerCase() === "inbound_payment";
+        const desc = String(tx.description || "");
+        const ext = String(tx.external_reference || "");
+        const txAgeMs = Date.now() - new Date(String(tx.created_at || "")).getTime();
+        return isType && (desc.includes(cleanPhone) || ext.includes(sessionId)) && txAgeMs < 30 * 60 * 1000;
+      });
+
+      if (phoneMatch) {
+        return {
+          paid: true,
+          amount: Number(phoneMatch.amount || 0),
+          receipt: String(phoneMatch.provider_reference || ""),
+          externalReference: String(phoneMatch.external_reference || ""),
+          phone: String(phoneMatch.beneficiary || phoneMatch.phone_number || ""),
+          createdAt: String(phoneMatch.created_at || ""),
+          raw: phoneMatch,
+        };
+      }
+    }
+  } catch (err) {
+    console.error("PayHero recent transactions error:", err);
+  }
+
+  return { paid: false, amount: 0, receipt: "", externalReference: "", phone: "", createdAt: "", raw: null };
 }
 
 export async function getPayHeroTransactionStatus(checkoutRequestId: string) {

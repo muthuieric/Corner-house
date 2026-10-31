@@ -9,6 +9,8 @@ export default function MobileParkingPay() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
 
   const fetchSession = async () => {
     const res = await fetch(`/api/parking/session/${sessionId}`);
@@ -18,7 +20,7 @@ export default function MobileParkingPay() {
 
   useEffect(() => {
     fetchSession();
-    const timer = setInterval(fetchSession, 15000); // Live update duration & fee every 15s
+    const timer = setInterval(fetchSession, 15000);
     return () => clearInterval(timer);
   }, [sessionId]);
 
@@ -45,9 +47,84 @@ export default function MobileParkingPay() {
     setLoading(false);
 
     if (res.ok) {
-      setMessage("📱 STK Push sent! Enter M-Pesa PIN on your phone.");
+      setMessage("STK Push sent. Enter M-Pesa PIN on your phone.");
+      const checkPayment = async () => {
+        const checkRes = await fetch("/api/parking/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        const checkData = await checkRes.json();
+        if (checkRes.ok && checkData.success && checkData.status === "PAID") {
+          setMessage("Payment confirmed. You have 15 minutes to exit.");
+          setShowConfirm(false);
+          setSession((prev: any) => ({
+            ...prev,
+            status: "PAID",
+            amountPaid: checkData.amountPaid || prev?.amountDue,
+          }));
+        } else {
+          setShowConfirm(true);
+          setConfirmMessage(checkData.message || "Payment not detected yet.");
+        }
+      };
+      setTimeout(checkPayment, 3000);
     } else {
       setMessage(data.error || "Payment failed to initiate");
+    }
+  };
+
+  const handleConfirmPayment = async () => {
+    setShowConfirm(false);
+    setMessage("Checking payment status");
+
+    const res = await fetch("/api/parking/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success && data.status === "PAID") {
+      setMessage("Payment confirmed. You have 15 minutes to exit.");
+      setSession((prev: any) => ({
+        ...prev,
+        status: "PAID",
+        amountPaid: data.amountPaid || prev?.amountDue,
+      }));
+    } else {
+      setMessage(data.message || "Payment not detected yet. Ensure you entered M-Pesa PIN.");
+      setShowConfirm(true);
+    }
+  };
+
+  const handleRetryConfirm = async () => {
+    setMessage("Retrying payment confirmation");
+    setShowConfirm(false);
+
+    const res = await fetch("/api/parking/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+
+    const data = await res.json();
+
+    if (data.status === "PAID") {
+      setMessage("Payment confirmed. You have 15 minutes to exit.");
+    } else if (data.status === "failed") {
+      setMessage("Payment failed. " + data.message + " Please try paying again");
+      setShowConfirm(true);
+    } else if (data.status === "pending") {
+      setMessage("Payment still pending. " + data.message + " Please wait and try again");
+      setShowConfirm(true);
+    } else if (data.status === "unknown") {
+      setMessage(" " + data.message + " Please ensure you completed the M-Pesa payment");
+      setShowConfirm(true);
+    } else {
+      setMessage(data.message || "Unknown status");
+      setShowConfirm(true);
     }
   };
 
@@ -70,11 +147,13 @@ export default function MobileParkingPay() {
     );
   }
 
+  const payButtonLabel = loading ? "Sending STK Push..." : "PAY KES " + session.amountDue + " VIA M-PESA";
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 flex flex-col items-center justify-center">
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 border space-y-5 text-center">
         <h2 className="text-lg font-bold text-slate-700">PARKING RECEIPT</h2>
-        
+
         <div className="bg-yellow-400 text-black text-3xl font-mono py-2 px-4 rounded-lg font-black inline-block">
           {session.plateNumber}
         </div>
@@ -96,7 +175,7 @@ export default function MobileParkingPay() {
 
         {session.status === "PAID" ? (
           <div className="bg-green-100 border border-green-400 text-green-800 p-4 rounded-xl font-bold">
-            ✅ Payment Confirmed. You have 15 minutes to exit the premises.
+            Payment Confirmed. You have 15 minutes to exit the premises.
           </div>
         ) : (
           <div className="space-y-3">
@@ -112,25 +191,29 @@ export default function MobileParkingPay() {
               disabled={loading}
               className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl text-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? (
-                <>
-                  <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
-                  Sending STK Push...
-                </>
-              ) : (
-                `PAY KES ${session.amountDue} VIA M-PESA`
-              )}
+              {payButtonLabel}
             </button>
             {message && <p className="text-xs font-semibold text-blue-600">{message}</p>}
-            <button
-              onClick={async () => {
-                await fetch("/api/parking/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) });
-                fetchSession();
-              }}
-              className="w-full bg-gray-200 text-gray-700 font-bold py-2 rounded-xl text-sm"
-            >
-              (Test) Mark as Paid
-            </button>
+
+            {showConfirm && (
+              <div className="bg-yellow-50 border border-yellow-400 p-4 rounded-xl">
+                <p className="font-medium text-yellow-800">{confirmMessage}</p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={handleConfirmPayment}
+                    className="flex-1 bg-green-500 text-white text-sm font-bold py-2 rounded-lg hover:bg-green-600 transition-colors"
+                  >
+                    Confirm Payment
+                  </button>
+                  <button
+                    onClick={handleRetryConfirm}
+                    className="flex-1 bg-blue-500 text-white text-sm py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

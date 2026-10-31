@@ -6,12 +6,13 @@ const GRACE_PERIOD_MINUTES = 15; // First 15 minutes free
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } }
+  { params }: { params: Promise<{ sessionId: string }> }
 ) {
   try {
+    const { sessionId } = await params;
     const result = await executeQuery(
       `SELECT * FROM parking_sessions WHERE id = $1 LIMIT 1`,
-      [params.sessionId]
+      [sessionId]
     );
 
     if (result.rows.length === 0) {

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     );
 
     const session = result.rows[0];
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = new URL(request.url).origin;
     const paymentUrl = `${baseUrl}/parking/pay/${session.id}`;
 
     return NextResponse.json({

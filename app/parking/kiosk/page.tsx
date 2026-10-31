@@ -32,6 +32,12 @@ export default function ParkingKiosk() {
             <QRCode value={vehicle.paymentUrl} size={220} />
           </div>
           <p className="text-sm text-slate-400">Scan QR Code to check parking time and pay on exit</p>
+          <div className="bg-white p-4 rounded-xl inline-block shadow-lg text-center">
+            <a href={vehicle.paymentUrl} className="text-green-600 font-mono text-sm break-all hover:underline" target="_blank" rel="noopener noreferrer">
+              {vehicle.paymentUrl}
+            </a>
+            <p className="text-xs text-slate-500 mt-1">Copy this link if QR doesn't scan</p>
+          </div>
         </div>
       ) : (
         <div className="text-slate-600 text-xl font-mono animate-pulse">

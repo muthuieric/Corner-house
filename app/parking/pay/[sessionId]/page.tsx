@@ -31,7 +31,7 @@ export default function MobileParkingPay() {
     setLoading(true);
     setMessage("Triggering M-Pesa STK Push...");
 
-    const res = await fetch("/api/payhero/initiate", {
+    const res = await fetch("/api/parking/pay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -52,7 +52,22 @@ export default function MobileParkingPay() {
   };
 
   if (!session) {
-    return <div className="p-8 text-center font-mono">Loading parking receipt...</div>;
+    return (
+      <div className="min-h-screen bg-red-50 p-4 flex flex-col items-center justify-center">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 border border-red-200 text-center">
+          <h2 className="text-lg font-bold text-red-700">Parking Session Not Found</h2>
+          <p className="text-sm text-red-500 mt-2">
+            The parking session could not be found. It may have expired or been paid.
+          </p>
+          <button
+            onClick={() => window.location.href = "/api/parking/test-session"}
+            className="mt-4 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl"
+          >
+            Create Test Session & Pay
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

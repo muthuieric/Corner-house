@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { executeQuery } from "@/lib/pg-client";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const result = await executeQuery(
       `SELECT id, plate_number, entry_time FROM parking_sessions WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT 1`
@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const session = result.rows[0];
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = new URL(request.url).origin;
 
     return NextResponse.json({
       active: true,

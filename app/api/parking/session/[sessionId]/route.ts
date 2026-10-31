@@ -30,19 +30,11 @@ export async function GET(
     );
 
     // Pricing Rule: KES 100 Base + KES 10 extra for every additional 30 mins (after 15 min grace period)
-    const BASE_CHARGE = 100;
-    const EXTRA_RATE = 10;
+    const BASE_CHARGE = 10;
     const GRACE_PERIOD = 15;
-    const SERVICE_FEE = 10; // small platform/service fee (e.g. VAT/processing)
+    const SERVICE_FEE = 5;
 
-    let extraAmount = 0;
-    if (durationMinutes > GRACE_PERIOD) {
-      const extraMinutes = durationMinutes - GRACE_PERIOD;
-      const extraUnits = Math.ceil(extraMinutes / 30);
-      extraAmount = extraUnits * EXTRA_RATE;
-    }
-
-    const amountDue = BASE_CHARGE + extraAmount + SERVICE_FEE;
+    const amountDue = BASE_CHARGE + SERVICE_FEE;
 
     return NextResponse.json({
       sessionId: session.id,
@@ -50,7 +42,7 @@ export async function GET(
       entryTime: session.entry_time,
       durationMinutes,
       baseAmount: BASE_CHARGE,
-      extraAmount,
+      extraAmount: 0,
       serviceFee: SERVICE_FEE,
       amountDue,
       status: session.status,

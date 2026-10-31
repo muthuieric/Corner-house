@@ -1,0 +1,39 @@
+{
+  "name": "corner-house-pay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Corner House · Pay — Next.js 16 + Tailwind payment QR generator with PayHero (M-Pesa) integration.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "node scripts/migrate-neon.js"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.6",
+    "@neon/env": "^1.6.6",
+    "@neondatabase/serverless": "^1.2.0",
+    "@supabase/supabase-js": "^2.49.9",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
+    "next": "^16.0.4",
+    "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-phone-input-2": "^2.15.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.11.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}

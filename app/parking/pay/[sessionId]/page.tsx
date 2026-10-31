@@ -84,6 +84,20 @@ export default function MobileParkingPay() {
             <span>Time Spent:</span>
             <span className="font-bold text-slate-900">{session.durationMinutes} mins</span>
           </div>
+          <div className="flex justify-between">
+            <span>Base Charge:</span>
+            <span className="font-bold text-slate-900">KES {session.baseAmount}</span>
+          </div>
+          {session.extraAmount > 0 && (
+            <div className="flex justify-between">
+              <span>Extra Time:</span>
+              <span className="font-bold text-slate-900">KES {session.extraAmount}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span>Service Fee:</span>
+            <span className="font-bold text-slate-900">KES {session.serviceFee}</span>
+          </div>
           <div className="flex justify-between text-base border-t pt-2">
             <span>Total Amount:</span>
             <span className="font-bold text-green-600">KES {session.amountDue}</span>

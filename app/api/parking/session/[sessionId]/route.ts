@@ -33,19 +33,25 @@ export async function GET(
     const BASE_CHARGE = 100;
     const EXTRA_RATE = 10;
     const GRACE_PERIOD = 15;
+    const SERVICE_FEE = 10; // small platform/service fee (e.g. VAT/processing)
 
-    let amountDue = BASE_CHARGE;
+    let extraAmount = 0;
     if (durationMinutes > GRACE_PERIOD) {
       const extraMinutes = durationMinutes - GRACE_PERIOD;
       const extraUnits = Math.ceil(extraMinutes / 30);
-      amountDue = BASE_CHARGE + extraUnits * EXTRA_RATE;
+      extraAmount = extraUnits * EXTRA_RATE;
     }
+
+    const amountDue = BASE_CHARGE + extraAmount + SERVICE_FEE;
 
     return NextResponse.json({
       sessionId: session.id,
       plateNumber: session.plate_number,
       entryTime: session.entry_time,
       durationMinutes,
+      baseAmount: BASE_CHARGE,
+      extraAmount,
+      serviceFee: SERVICE_FEE,
       amountDue,
       status: session.status,
     });

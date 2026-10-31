@@ -96,7 +96,7 @@ export default function MobileParkingPay() {
 
         {session.status === "PAID" ? (
           <div className="bg-green-100 border border-green-400 text-green-800 p-4 rounded-xl font-bold">
-            ✅ Payment Confirmed. Exit Gate Unlocked!
+            ✅ Payment Confirmed. You have 15 minutes to exit the premises.
           </div>
         ) : (
           <div className="space-y-3">
@@ -110,11 +110,27 @@ export default function MobileParkingPay() {
             <button
               onClick={handlePay}
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl text-lg transition-all disabled:opacity-50"
+              className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3.5 rounded-xl text-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? "Processing..." : `PAY KES ${session.amountDue} VIA M-PESA`}
+              {loading ? (
+                <>
+                  <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+                  Sending STK Push...
+                </>
+              ) : (
+                `PAY KES ${session.amountDue} VIA M-PESA`
+              )}
             </button>
             {message && <p className="text-xs font-semibold text-blue-600">{message}</p>}
+            <button
+              onClick={async () => {
+                await fetch("/api/parking/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) });
+                fetchSession();
+              }}
+              className="w-full bg-gray-200 text-gray-700 font-bold py-2 rounded-xl text-sm"
+            >
+              (Test) Mark as Paid
+            </button>
           </div>
         )}
       </div>

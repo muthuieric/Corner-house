@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       response.CheckoutRequestID || response.CheckoutRequestId || response.checkout_request_id || response.checkoutRequestId || response.reference;
 
     await executeQuery(
-      `UPDATE parking_sessions SET payhero_ref = $1 WHERE id = $2`,
+      `UPDATE parking_sessions SET payhero_ref = $1, status = 'PAID' WHERE id = $2`,
       [String(checkoutRequestId || externalReference), sessionId]
     );
 

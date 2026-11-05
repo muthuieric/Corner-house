@@ -167,6 +167,14 @@ CREATE TABLE IF NOT EXISTS public.parking_sessions (
   mpesa_receipt_number VARCHAR,
   phone_number VARCHAR,
   payhero_ref VARCHAR,
+  digitax_sale_id VARCHAR,
+  digitax_item_id VARCHAR,
+  etims_receipt_number VARCHAR,
+  invoice_number VARCHAR,
+  etims_receipt_url TEXT,
+  digitax_status VARCHAR DEFAULT 'pending',
+  digitax_error TEXT,
+  digitax_submitted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

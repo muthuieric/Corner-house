@@ -72,12 +72,7 @@ export default function PayPage() {
       const data = await res.json();
       setLoading(false);
       if (res.ok && data.success && data.status === "PAID") {
-        setSession((prev: any) => ({
-          ...prev,
-          status: "PAID",
-          amountPaid: data.amountPaid || prev.amountDue,
-        }));
-        setMessage("✅ Payment confirmed!");
+        window.location.href = `/parking/confirmation/${session.sessionId}`;
       } else {
         setMessage(data.message || "Payment not detected yet. Ensure you entered M-Pesa PIN.");
       }
